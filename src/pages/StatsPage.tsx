@@ -129,8 +129,8 @@ export function StatsPage() {
       
       <div className="px-4 py-4 space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-4">
+        <div className="grid grid-cols-2 gap-3 animate-list-item" style={{ animationDelay: '0ms' }}>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-1.5 mb-1">
               <TrendingDown size={14} className="text-red-500" />
               <span className="text-xs text-red-600 font-medium">支出</span>

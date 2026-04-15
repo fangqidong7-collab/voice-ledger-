@@ -123,8 +123,8 @@ export function DetailPage() {
       {/* Transactions List */}
       <div className="px-4 py-4">
         {transactions.length === 0 ? (
-          <div className="flex flex-col items-center py-16 text-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center py-16 text-center animate-fade-in">
+            <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mb-4 animate-float">
               <span className="text-4xl">🔍</span>
             </div>
             <p className="text-slate-500">
@@ -136,38 +136,39 @@ export function DetailPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {dailyTotals.map(({ date, income, expense, count }) => (
-              <div key={date}>
+            {dailyTotals.map(({ date, income, expense, count }, dayIndex) => (
+              <div key={date} className="animate-list-item" style={{ animationDelay: `${dayIndex * 80}ms` }}>
                 {/* Date Header */}
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 px-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-700">
+                    <span className="text-sm font-semibold text-slate-700">
                       {formatFullDate(date)}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                       {count}笔
                     </span>
                   </div>
                   <div className="flex gap-3 text-xs">
                     {expense > 0 && (
-                      <span className="text-red-500">-{formatCurrency(expense, state.settings.currency)}</span>
+                      <span className="text-red-500 font-medium">-{formatCurrency(expense, state.settings.currency)}</span>
                     )}
                     {income > 0 && (
-                      <span className="text-emerald-500">+{formatCurrency(income, state.settings.currency)}</span>
+                      <span className="text-emerald-500 font-medium">+{formatCurrency(income, state.settings.currency)}</span>
                     )}
                   </div>
                 </div>
                 
                 {/* Transactions */}
-                <div className="space-y-2 bg-white rounded-2xl overflow-hidden shadow-sm">
-                  {groupedTransactions[date].map((transaction) => (
-                    <TransactionItem
-                      key={transaction.id}
-                      transaction={transaction}
-                      currency={state.settings.currency}
-                      onEdit={() => handleEdit(transaction)}
-                      onDelete={() => handleDelete(transaction.id)}
-                    />
+                <div className="space-y-2 bg-white rounded-2xl overflow-hidden shadow-card">
+                  {groupedTransactions[date].map((transaction, index) => (
+                    <div key={transaction.id} style={{ animationDelay: `${(dayIndex * 80) + (index * 40)}ms` }} className="animate-list-item">
+                      <TransactionItem
+                        transaction={transaction}
+                        currency={state.settings.currency}
+                        onEdit={() => handleEdit(transaction)}
+                        onDelete={() => handleDelete(transaction.id)}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

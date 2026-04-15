@@ -34,6 +34,7 @@ interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+  maxAlternatives: number;
   start: () => void;
   stop: () => void;
   abort: () => void;
@@ -50,28 +51,71 @@ declare global {
   }
 }
 
-export type VoiceState = 'idle' | 'recording' | 'processing' | 'error' | 'unsupported';
+export type VoiceState = 
+  | 'idle' 
+  | 'recording' 
+  | 'processing' 
+  | 'error' 
+  | 'unsupported' 
+  | 'permission_denied';
+
+export type VoiceError = {
+  type: 'not_supported' | 'permission_denied' | 'network' | 'no_speech' | 'unknown';
+  message: string;
+};
 
 interface UseSpeechRecognitionReturn {
   state: VoiceState;
   transcript: string;
-  error: string | null;
+  error: VoiceError | null;
   startRecording: () => void;
   stopRecording: () => void;
   parseResult: (categories: Category[]) => ReturnType<typeof parseVoiceInput> | null;
   reset: () => void;
+  getErrorMessage: () => string;
 }
+
+const ERROR_MESSAGES: Record<string, { message: string; type: VoiceError['type'] }> = {
+  'not-allowed': { 
+    message: '麦克风权限被拒绝，请在浏览器设置中允许使用麦克风', 
+    type: 'permission_denied' 
+  },
+  'permission-denied': { 
+    message: '麦克风权限被拒绝，请在浏览器设置中允许使用麦克风', 
+    type: 'permission_denied' 
+  },
+  'no-speech': { 
+    message: '未检测到语音输入，请重试', 
+    type: 'no_speech' 
+  },
+  'network': { 
+    message: '网络错误，请检查网络连接后重试', 
+    type: 'network' 
+  },
+  'audio-capture': { 
+    message: '未检测到麦克风设备，请确保麦克风已连接', 
+    type: 'unknown' 
+  },
+  'aborted': { 
+    message: '语音识别被中断', 
+    type: 'unknown' 
+  },
+};
 
 export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   const [state, setState] = useState<VoiceState>('idle');
   const [transcript, setTranscript] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<VoiceError | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isSupported = useRef(isSpeechRecognitionSupported());
 
   useEffect(() => {
     if (!isSupported.current) {
       setState('unsupported');
+      setVoiceError({ 
+        type: 'not_supported', 
+        message: '您的浏览器不支持语音识别功能，请使用 Chrome 或 Edge 浏览器' 
+      });
       return;
     }
 
@@ -81,10 +125,11 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'zh-CN';
+    recognition.maxAlternatives = 1;
     
     recognition.onstart = () => {
       setState('recording');
-      setError(null);
+      setVoiceError(null);
     };
     
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -105,17 +150,24 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     };
     
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === 'no-speech') {
+      const errorInfo = ERROR_MESSAGES[event.error] || { 
+        message: `语音识别出错: ${event.error}`, 
+        type: 'unknown' as VoiceError['type'] 
+      };
+      
+      setVoiceError({
+        type: errorInfo.type,
+        message: errorInfo.message,
+      });
+      
+      if (errorInfo.type === 'permission_denied') {
+        setState('permission_denied');
+      } else if (errorInfo.type === 'no_speech') {
+        // no-speech 错误时直接回到 idle 状态
         setState('idle');
-        return;
-      }
-      if (event.error === 'not-allowed') {
-        setError('麦克风权限被拒绝');
+      } else {
         setState('error');
-        return;
       }
-      setError('语音识别出错');
-      setState('error');
     };
     
     recognition.onend = () => {
@@ -127,15 +179,19 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     recognitionRef.current = recognition;
     
     return () => {
-      recognition.abort();
+      try {
+        recognition.abort();
+      } catch {
+        // 忽略
+      }
     };
-  }, [state]);
+  }, []);
 
   const startRecording = useCallback(() => {
     if (!isSupported.current || !recognitionRef.current) return;
     
     setTranscript('');
-    setError(null);
+    setVoiceError(null);
     
     try {
       recognitionRef.current.start();
@@ -162,16 +218,22 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   const reset = useCallback(() => {
     setState('idle');
     setTranscript('');
-    setError(null);
+    setVoiceError(null);
   }, []);
+
+  const getErrorMessage = useCallback(() => {
+    if (!voiceError) return '';
+    return voiceError.message;
+  }, [voiceError]);
 
   return {
     state,
     transcript,
-    error,
+    error: voiceError,
     startRecording,
     stopRecording,
     parseResult,
     reset,
+    getErrorMessage,
   };
 }

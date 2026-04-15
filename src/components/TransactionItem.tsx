@@ -62,23 +62,23 @@ export function TransactionItem({ transaction, currency, onEdit, onDelete }: Tra
         onTouchEnd={handleTouchEnd}
         onClick={() => isSwiped && setIsSwiped(false)}
         className={cn(
-          'relative flex items-center gap-3 p-4 bg-white transition-transform duration-200',
+          'relative flex items-center gap-3 p-4 bg-white transition-all duration-200 active:bg-slate-50',
           isSwiped && '-translate-x-20'
         )}
       >
         {/* Category Icon */}
-        <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-2xl shadow-sm">
           {transaction.categoryIcon}
         </div>
         
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-800 truncate">
+            <span className="font-semibold text-slate-800 truncate">
               {transaction.note || transaction.category}
             </span>
             <span className={cn(
-              'text-xs px-1.5 py-0.5 rounded',
+              'text-xs px-1.5 py-0.5 rounded font-medium',
               isExpense 
                 ? 'bg-red-50 text-red-500' 
                 : 'bg-emerald-50 text-emerald-500'
@@ -94,7 +94,7 @@ export function TransactionItem({ transaction, currency, onEdit, onDelete }: Tra
         {/* Amount & Time */}
         <div className="text-right">
           <div className={cn(
-            'font-bold font-mono',
+            'font-bold font-mono text-base',
             isExpense ? 'text-red-500' : 'text-emerald-500'
           )}>
             {isExpense ? '-' : '+'}{formatCurrency(transaction.amount, currency)}
@@ -110,9 +110,9 @@ export function TransactionItem({ transaction, currency, onEdit, onDelete }: Tra
             e.stopPropagation();
             onEdit();
           }}
-          className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+          className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors active:scale-90"
         >
-          <Edit3 size={16} className="text-slate-500" />
+          <Edit3 size={15} className="text-slate-500" />
         </button>
       </div>
     </div>

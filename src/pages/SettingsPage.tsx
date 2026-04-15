@@ -70,44 +70,47 @@ export function SettingsPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <div className="bg-white px-4 pt-12 pb-4 border-b border-slate-100">
-        <h1 className="text-xl font-bold text-slate-800">设置</h1>
+      <div className="bg-gradient-to-br from-indigo-500 to-violet-500 px-4 pt-12 pb-6">
+        <h1 className="text-2xl font-bold text-white">设置</h1>
+        <p className="text-white/70 text-sm mt-1">管理你的记账偏好</p>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-4 space-y-4 -mt-4">
         {/* Category Management */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
-            <Settings size={18} className="text-indigo-500" />
-            <span className="font-medium text-slate-800">分类管理</span>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-card animate-list-item" style={{ animationDelay: '50ms' }}>
+          <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-100">
+            <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <Settings size={18} className="text-indigo-500" />
+            </div>
+            <span className="font-semibold text-slate-800">分类管理</span>
           </div>
           
           {state.categories.map((category) => (
             <div 
               key={category.id}
-              className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition-colors cursor-pointer active:bg-slate-100"
+              onClick={() => {
+                setEditingCategory(category);
+                setNewCategoryName(category.name);
+                setNewCategoryIcon(category.icon);
+                setNewCategoryType(category.type);
+              }}
             >
-              <button
-                onClick={() => {
-                  setEditingCategory(category);
-                  setNewCategoryName(category.name);
-                  setNewCategoryIcon(category.icon);
-                  setNewCategoryType(category.type);
-                }}
-                className="flex-1 flex items-center gap-3"
-              >
-                <span className="text-2xl">{category.icon}</span>
-                <span className="text-slate-700">{category.name}</span>
+              <div className="flex-1 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl">
+                  {category.icon}
+                </div>
+                <span className="font-medium text-slate-700">{category.name}</span>
                 <span className={cn(
-                  'text-xs px-1.5 py-0.5 rounded',
+                  'text-xs px-2 py-0.5 rounded-full font-medium',
                   category.type === 'expense' ? 'bg-red-50 text-red-500' :
                   category.type === 'income' ? 'bg-emerald-50 text-emerald-500' :
                   'bg-slate-100 text-slate-500'
                 )}>
                   {category.type === 'expense' ? '支出' : category.type === 'income' ? '收入' : '通用'}
                 </span>
-              </button>
-              <ChevronRight size={16} className="text-slate-400" />
+              </div>
+              <ChevronRight size={18} className="text-slate-400" />
             </div>
           ))}
           
@@ -126,9 +129,12 @@ export function SettingsPage() {
         </div>
 
         {/* Currency Settings */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-3 border-b border-slate-100">
-            <span className="font-medium text-slate-800">货币单位</span>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-card animate-list-item" style={{ animationDelay: '150ms' }}>
+          <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-100">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <span className="text-lg font-bold text-emerald-600">{state.settings.currency}</span>
+            </div>
+            <span className="font-semibold text-slate-800">货币单位</span>
           </div>
           <div className="p-2">
             {CURRENCIES.map((currency) => (
@@ -136,19 +142,30 @@ export function SettingsPage() {
                 key={currency.value}
                 onClick={() => setCurrency(currency.value)}
                 className={cn(
-                  'w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors',
+                  'w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all',
                   state.settings.currency === currency.value
-                    ? 'bg-indigo-50'
-                    : 'hover:bg-slate-50'
+                    ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border-2 border-indigo-200'
+                    : 'hover:bg-slate-50 border-2 border-transparent'
                 )}
               >
-                <span className={cn(
-                  state.settings.currency === currency.value ? 'text-indigo-600' : 'text-slate-700'
-                )}>
-                  {currency.label}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    'text-xl font-bold',
+                    state.settings.currency === currency.value ? 'text-indigo-600' : 'text-slate-400'
+                  )}>
+                    {currency.symbol}
+                  </span>
+                  <span className={cn(
+                    'font-medium',
+                    state.settings.currency === currency.value ? 'text-indigo-700' : 'text-slate-600'
+                  )}>
+                    {currency.label.split(' (')[0]}
+                  </span>
+                </div>
                 {state.settings.currency === currency.value && (
-                  <Check size={18} className="text-indigo-500" />
+                  <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
+                    <Check size={14} className="text-white" />
+                  </div>
                 )}
               </button>
             ))}
@@ -156,31 +173,43 @@ export function SettingsPage() {
         </div>
 
         {/* Data Management */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-card animate-list-item" style={{ animationDelay: '200ms' }}>
           <button
             onClick={handleExport}
-            className="w-full flex items-center gap-3 px-4 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors active:bg-slate-100"
           >
-            <Download size={18} className="text-indigo-500" />
-            <span className="font-medium text-slate-800">导出数据</span>
-            <span className="text-xs text-slate-400 ml-auto">
-              {state.transactions.length} 条记录
-            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
+              <Download size={18} className="text-blue-500" />
+            </div>
+            <div className="flex-1 text-left">
+              <span className="font-semibold text-slate-800">导出数据</span>
+              <p className="text-xs text-slate-400 mt-0.5">{state.transactions.length} 条记录</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-400" />
           </button>
           
           <button
             onClick={() => setShowClearConfirm(true)}
-            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-red-50 transition-colors active:bg-red-100"
           >
-            <Trash2 size={18} className="text-red-500" />
-            <span className="font-medium text-red-500">清除所有数据</span>
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+              <Trash2 size={18} className="text-red-500" />
+            </div>
+            <div className="flex-1 text-left">
+              <span className="font-semibold text-red-500">清除所有数据</span>
+              <p className="text-xs text-slate-400 mt-0.5">删除所有记录，不可恢复</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-400" />
           </button>
         </div>
 
         {/* App Info */}
-        <div className="text-center py-6 text-sm text-slate-400">
-          <p>小声记账 VoiceBook</p>
-          <p className="mt-1">让记账像说话一样简单</p>
+        <div className="text-center py-8 animate-list-item" style={{ animationDelay: '300ms' }}>
+          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-indigo-100 to-violet-100 rounded-2xl flex items-center justify-center mb-3 shadow-sm">
+            <span className="text-3xl">💰</span>
+          </div>
+          <p className="font-semibold text-slate-700">小声记账 VoiceBook</p>
+          <p className="text-sm text-slate-400 mt-1">让记账像说话一样简单</p>
         </div>
       </div>
 

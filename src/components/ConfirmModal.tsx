@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction, Category } from '../types';
 import { cn } from '../lib/utils';
 import { CategoryPicker } from './CategoryPicker';
 
