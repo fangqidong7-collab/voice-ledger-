@@ -108,6 +108,14 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   const [voiceError, setVoiceError] = useState<VoiceError | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isSupported = useRef(isSpeechRecognitionSupported());
+  
+  // 使用 ref 追踪最新的 state 值，避免闭包陷阱
+  const stateRef = useRef<VoiceState>('idle');
+  
+  // 每次 state 变化时同步到 ref
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     if (!isSupported.current) {
@@ -170,8 +178,9 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
       }
     };
     
+    // 使用 stateRef.current 而非闭包中的 state，避免闭包陷阱
     recognition.onend = () => {
-      if (state === 'recording') {
+      if (stateRef.current === 'recording') {
         setState('processing');
       }
     };
