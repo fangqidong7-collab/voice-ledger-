@@ -56,6 +56,11 @@ export function VoiceButton({ state, onStart, onStop, error }: VoiceButtonProps)
     }
   }, [state]);
   
+  const isRecording = state === 'recording';
+  const isUploading = state === 'uploading';
+  const hasError = state === 'error';
+  const isIdle = state === 'idle';
+  
   const handleClick = () => {
     if (isIdle || hasError) {
       onStart();
@@ -68,11 +73,6 @@ export function VoiceButton({ state, onStart, onStop, error }: VoiceButtonProps)
   const handleMouseUp = () => setIsPressed(false);
   const handleTouchStart = () => setIsPressed(true);
   const handleTouchEnd = () => setIsPressed(false);
-  
-  const isRecording = state === 'recording';
-  const isUploading = state === 'uploading';
-  const hasError = state === 'error';
-  const isIdle = state === 'idle';
   
   return (
     <div className="relative flex flex-col items-center justify-center py-8">
@@ -108,7 +108,7 @@ export function VoiceButton({ state, onStart, onStop, error }: VoiceButtonProps)
         onMouseLeave={handleMouseUp}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        disabled={isRecording || isUploading}
+        disabled={isUploading}
         className={cn(
           'relative w-36 h-36 rounded-full flex items-center justify-center transition-all duration-200',
           'active:scale-95',
