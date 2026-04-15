@@ -1,15 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Mic, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { VoiceState } from '../hooks/useSpeechRecognition';
+import { RecorderState } from '../hooks/useAudioRecorder';
 
 interface VoiceButtonProps {
-  state: VoiceState;
+  state: RecorderState;
   onStart: () => void;
   onStop: () => void;
+  error?: string | null;
 }
 
-export function VoiceButton({ state, onStart, onStop }: VoiceButtonProps) {
+export function VoiceButton({ state, onStart, onStop, error }: VoiceButtonProps) {
   const [ripples, setRipples] = useState<Array<{ id: number; scale: number; opacity: number }>>([]);
   const [isPressed, setIsPressed] = useState(false);
   const animationRef = useRef<number | undefined>(undefined);
@@ -56,9 +57,9 @@ export function VoiceButton({ state, onStart, onStop }: VoiceButtonProps) {
   }, [state]);
   
   const handleClick = () => {
-    if (state === 'idle' || state === 'error' || state === 'unsupported') {
+    if (isIdle || hasError) {
       onStart();
-    } else if (state === 'recording') {
+    } else if (isRecording) {
       onStop();
     }
   };
@@ -69,9 +70,9 @@ export function VoiceButton({ state, onStart, onStop }: VoiceButtonProps) {
   const handleTouchEnd = () => setIsPressed(false);
   
   const isRecording = state === 'recording';
-  const isProcessing = state === 'processing';
-  const isUnsupported = state === 'unsupported';
+  const isUploading = state === 'uploading';
   const hasError = state === 'error';
+  const isIdle = state === 'idle';
   
   return (
     <div className="relative flex flex-col items-center justify-center py-8">
@@ -107,14 +108,13 @@ export function VoiceButton({ state, onStart, onStop }: VoiceButtonProps) {
         onMouseLeave={handleMouseUp}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        disabled={isProcessing}
+        disabled={isRecording || isUploading}
         className={cn(
           'relative w-36 h-36 rounded-full flex items-center justify-center transition-all duration-200',
           'active:scale-95',
           isPressed && 'scale-95',
-          isUnsupported && 'bg-slate-300 cursor-not-allowed',
           isRecording && 'bg-gradient-to-br from-red-500 via-red-600 to-rose-600 shadow-red-200',
-          !isRecording && !isUnsupported && !hasError && 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 shadow-indigo-300 shadow-2xl',
+          !isRecording && !hasError && 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 shadow-indigo-300 shadow-2xl',
           hasError && 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-200'
         )}
       >
@@ -135,13 +135,13 @@ export function VoiceButton({ state, onStart, onStop }: VoiceButtonProps) {
         )} />
         
         {/* 麦克风图标 */}
-        {isUnsupported ? (
-          <div className="relative z-10">
-            <MicOff size={48} className="text-white/60" strokeWidth={1.5} />
-          </div>
-        ) : isProcessing ? (
+        {isUploading ? (
           <div className="relative z-10">
             <Loader2 size={48} className="text-white animate-spin" strokeWidth={1.5} />
+          </div>
+        ) : hasError ? (
+          <div className="relative z-10">
+            <AlertCircle size={48} className="text-white" strokeWidth={1.5} />
           </div>
         ) : (
           <div className="relative z-10">
@@ -171,34 +171,28 @@ export function VoiceButton({ state, onStart, onStop }: VoiceButtonProps) {
       
       {/* 状态文字 */}
       <div className="mt-8 text-center">
-        {state === 'idle' && (
+        {isIdle && (
           <div className="flex flex-col items-center gap-1">
-            <span className="text-base font-medium text-slate-700">按住说话</span>
-            <span className="text-xs text-slate-400">松开后自动识别</span>
+            <span className="text-base font-medium text-slate-700">点击开始录音</span>
+            <span className="text-xs text-slate-400">说出您的消费，如"午餐花了35元"</span>
           </div>
         )}
-        {state === 'recording' && (
+        {isRecording && (
           <div className="flex flex-col items-center gap-1">
             <span className="text-base font-medium text-red-500">正在录音...</span>
-            <span className="text-xs text-slate-400 animate-pulse">松开手指结束</span>
+            <span className="text-xs text-slate-400 animate-pulse">再次点击结束录音</span>
           </div>
         )}
-        {state === 'processing' && (
+        {isUploading && (
           <div className="flex flex-col items-center gap-1">
-            <span className="text-base font-medium text-slate-600">识别中</span>
-            <span className="text-xs text-slate-400">正在解析语义...</span>
+            <span className="text-base font-medium text-slate-600">识别中...</span>
+            <span className="text-xs text-slate-400">正在将语音转为文字</span>
           </div>
         )}
-        {state === 'error' && (
+        {hasError && (
           <div className="flex flex-col items-center gap-1">
-            <span className="text-base font-medium text-amber-500">识别失败</span>
+            <span className="text-base font-medium text-amber-500">{error || '识别失败'}</span>
             <span className="text-xs text-slate-400">点击重试或使用手动输入</span>
-          </div>
-        )}
-        {state === 'unsupported' && (
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-base font-medium text-slate-500">浏览器不支持语音</span>
-            <span className="text-xs text-slate-400">请使用手动输入方式</span>
           </div>
         )}
       </div>

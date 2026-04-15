@@ -1,6 +1,10 @@
 import { Router } from 'express';
+import speechRouter from './speech';
 
 const router = Router();
+
+// 注册语音识别路由
+router.use(speechRouter);
 
 // API 路由示例
 router.get('/api/hello', (req, res) => {

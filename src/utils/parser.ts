@@ -134,7 +134,3 @@ export function parseVoiceInput(text: string, categories: Category[] = DEFAULT_C
     note: text,
   };
 }
-
-export function isSpeechRecognitionSupported(): boolean {
-  return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
-}

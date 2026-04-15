@@ -1,71 +1,82 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { VoiceButton } from '../components/VoiceButton';
 import { StatCard } from '../components/StatCard';
 import { TransactionItem } from '../components/TransactionItem';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ManualInputForm } from '../components/ManualInputForm';
 import { Transaction } from '../types';
+import { parseVoiceInput } from '../utils/parser';
 import { CalendarDays, AlertCircle } from 'lucide-react';
 
 export function HomePage() {
   const { state, addTransaction, updateTransaction, deleteTransaction, getMonthStats, setPage } = useApp();
-  const { state: voiceState, transcript, startRecording, stopRecording, parseResult, reset, getErrorMessage } = useSpeechRecognition();
+  const { state: recorderState, startRecording, stopRecording, error: recorderError, reset: resetRecorder } = useAudioRecorder();
   
   const [showConfirm, setShowConfirm] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [pendingData, setPendingData] = useState<Omit<Transaction, 'id' | 'createdAt'> | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const [lastTranscript, setLastTranscript] = useState<string>('');
   
   const stats = getMonthStats();
   const today = new Date().toISOString().slice(0, 10);
   const todayTransactions = state.transactions.filter(t => t.date === today);
   
-  // 处理语音识别结果
-  useEffect(() => {
-    if (voiceState === 'processing' && transcript) {
-      const parsed = parseResult(state.categories);
-      
-      if (parsed && parsed.amount > 0) {
-        // 成功解析出金额
-        setPendingData({
-          amount: parsed.amount,
-          type: parsed.type,
-          category: parsed.category,
-          categoryIcon: parsed.categoryIcon,
-          note: parsed.note,
-          date: today,
-        });
-        setShowConfirm(true);
-      } else {
-        // 无法解析金额，显示手动输入表单
-        setPendingData({
-          amount: 0,
-          type: parsed?.type || 'expense',
-          category: parsed?.category || state.categories[0]?.name || '其他',
-          categoryIcon: parsed?.categoryIcon || state.categories[0]?.icon || '📦',
-          note: transcript,
-          date: today,
-        });
+  // 处理语音按钮点击
+  const handleVoiceClick = useCallback(async () => {
+    if (recorderState === 'idle' || recorderState === 'error') {
+      try {
+        await startRecording();
+      } catch {
+        // 权限被拒绝等错误，自动显示手动输入
+        setShowManualInput(true);
+      }
+    } else if (recorderState === 'recording') {
+      try {
+        const text = await stopRecording();
+        setLastTranscript(text);
+        
+        // 解析语音文本
+        const parsed = parseVoiceInput(text, state.categories);
+        if (parsed && parsed.amount > 0) {
+          setPendingData({ 
+            amount: parsed.amount,
+            type: parsed.type,
+            category: parsed.category,
+            categoryIcon: parsed.categoryIcon,
+            note: parsed.note,
+            date: today,
+          });
+          setShowConfirm(true);
+        } else {
+          // 无法解析金额，显示手动输入表单
+          setPendingData({
+            amount: 0,
+            type: parsed?.type || 'expense',
+            category: parsed?.category || state.categories[0]?.name || '其他',
+            categoryIcon: parsed?.categoryIcon || state.categories[0]?.icon || '📦',
+            note: text,
+            date: today,
+          });
+          setShowManualInput(true);
+        }
+      } catch {
+        // 识别失败，引导手动输入
         setShowManualInput(true);
       }
     }
-  }, [voiceState, transcript]);
+  }, [recorderState, startRecording, stopRecording, state.categories, today]);
   
-  // 监听权限拒绝状态
-  useEffect(() => {
-    if (voiceState === 'permission_denied' || voiceState === 'unsupported') {
-      setShowManualInput(true);
-    }
-  }, [voiceState]);
-  
+  // 监听错误状态，自动显示手动输入
   const handleConfirm = (data: Omit<Transaction, 'id' | 'createdAt'>) => {
     try {
       addTransaction(data);
-      reset();
+      resetRecorder();
       setPendingData(null);
+      setLastTranscript('');
     } catch (err) {
       if (err instanceof Error && err.message.includes('存储空间')) {
         setStorageWarning(err.message);
@@ -76,7 +87,8 @@ export function HomePage() {
   const handleCloseConfirm = () => {
     setShowConfirm(false);
     setPendingData(null);
-    reset();
+    setLastTranscript('');
+    resetRecorder();
   };
   
   const handleEdit = (transaction: Transaction) => {
@@ -177,27 +189,28 @@ export function HomePage() {
         {!showManualInput ? (
           <div className="bg-white rounded-3xl shadow-card p-4">
             {/* Error Message */}
-            {(voiceState === 'error' || voiceState === 'permission_denied') && (
+            {recorderState === 'error' && recorderError && (
               <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-4 flex items-center gap-2">
                 <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600">{getErrorMessage()}</p>
+                <p className="text-sm text-red-600">{recorderError}</p>
               </div>
             )}
             
             {/* Voice Button */}
             <div className="flex justify-center">
               <VoiceButton
-                state={voiceState}
-                onStart={startRecording}
-                onStop={stopRecording}
+                state={recorderState}
+                onStart={handleVoiceClick}
+                onStop={handleVoiceClick}
+                error={recorderError}
               />
             </div>
             
             {/* Transcript Preview */}
-            {transcript && voiceState !== 'idle' && (
+            {lastTranscript && (
               <div className="mt-4 px-4 py-3 bg-slate-50 rounded-2xl animate-fade-in">
                 <p className="text-sm text-slate-600 text-center">
-                  "{transcript}"
+                  "{lastTranscript}"
                 </p>
               </div>
             )}
@@ -219,7 +232,8 @@ export function HomePage() {
               <button
                 onClick={() => {
                   setShowManualInput(false);
-                  reset();
+                  resetRecorder();
+                  setLastTranscript('');
                 }}
                 className="text-sm text-indigo-500 hover:text-indigo-600"
               >
