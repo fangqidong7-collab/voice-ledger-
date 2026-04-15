@@ -26,12 +26,14 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         } 
       });
       
-      // 选择浏览器支持的音频格式
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : 'audio/mp4';
+      // 优先选择扣子 API 支持的格式（ogg > webm > mp4）
+      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : 'audio/webm';
       
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
@@ -81,8 +83,13 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
         try {
           // 上传到后端进行语音识别
+          // 根据实际 mimeType 动态设置后缀
+          const extension = audioBlob.type.includes('ogg') ? 'ogg' 
+            : audioBlob.type.includes('mp4') ? 'mp4' 
+            : audioBlob.type.includes('webm') ? 'ogg'  // webm/opus 改为 ogg 后缀
+            : 'wav';
           const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.webm');
+          formData.append('audio', audioBlob, `recording.${extension}`);
 
           const response = await fetch('/api/speech-to-text', {
             method: 'POST',
@@ -95,9 +102,16 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
             error?: string;
           };
 
-          if (result.success && result.text) {
-            setState('idle');
-            resolve(result.text);
+          if (result.success) {
+            if (result.text && result.text.trim().length > 0) {
+              setState('idle');
+              resolve(result.text.trim());
+            } else {
+              // API 成功但没识别到文字
+              setError('未识别到语音内容，请靠近麦克风重试');
+              setState('error');
+              reject(new Error('未识别到语音内容'));
+            }
           } else {
             setError(result.error || '语音识别失败，请重试');
             setState('error');

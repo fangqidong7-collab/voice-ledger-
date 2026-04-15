@@ -27,41 +27,76 @@ router.post('/api/speech-to-text', upload.single('audio'), async (req, res) => {
       });
     }
 
+    // 将 webm 格式映射为 ogg（编码兼容）
+    let filename = req.file.originalname || 'audio.ogg';
+    let contentType = req.file.mimetype;
+
+    if (contentType.includes('webm')) {
+      filename = filename.replace(/\.webm$/i, '.ogg');
+      contentType = 'audio/ogg';
+    }
+
     // 构建 FormData 转发给扣子 API
     const formData = new FormData();
     formData.append('file', req.file.buffer, {
-      filename: req.file.originalname || 'audio.webm',
-      contentType: req.file.mimetype,
+      filename,
+      contentType,
     });
 
-    const response = await fetch('https://api.coze.cn/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        ...formData.getHeaders(),
-      },
-      body: formData,
+    // 添加详细日志
+    console.log('[Speech API] Uploading audio:', {
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      mappedFilename: filename,
+      mappedContentType: contentType,
     });
 
-    const result = await response.json() as {
-      code?: number;
-      msg?: string;
-      data?: {
-        text?: string;
+    // 添加超时保护
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15秒超时
+
+    try {
+      const response = await fetch('https://api.coze.cn/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          ...formData.getHeaders(),
+        },
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const result = await response.json() as {
+        code?: number;
+        msg?: string;
+        data?: {
+          text?: string;
+        };
       };
-    };
 
-    if (result.code === 0) {
-      res.json({ 
-        success: true, 
-        text: result.data?.text || '' 
-      });
-    } else {
-      console.error('Coze API error:', result);
-      res.status(500).json({ 
-        success: false, 
-        error: result.msg || '语音识别失败' 
-      });
+      // 添加详细日志
+      console.log('[Speech API] Coze response:', JSON.stringify(result));
+
+      if (result.code === 0) {
+        res.json({ 
+          success: true, 
+          text: result.data?.text || '' 
+        });
+      } else {
+        console.error('Coze API error:', result);
+        res.status(500).json({ 
+          success: false, 
+          error: result.msg || '语音识别失败' 
+        });
+      }
+    } catch (error) {
+      clearTimeout(timeout);
+      if ((error as Error).name === 'AbortError') {
+        return res.status(504).json({ success: false, error: '语音识别超时，请重试' });
+      }
+      throw error;
     }
   } catch (error) {
     console.error('Speech to text error:', error);
